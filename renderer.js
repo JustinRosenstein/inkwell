@@ -1595,134 +1595,29 @@ function buildRichDiffHtml(changes) {
 
 function parseMarkdownWithDiffMarkers(text) {
   // Parse text that has \x00DEL{id}\x00...\x00/DEL\x00 and \x00INS{id}\x00...\x00/INS\x00 markers
-  // First convert markers to placeholders that won't be affected by markdown parsing
+  // Strategy: Convert markers to HTML-safe placeholders, parse markdown, then convert back to spans
+
+  // Step 1: Convert diff markers to HTML-safe placeholder spans BEFORE markdown parsing
+  // These placeholder spans will survive markdown parsing
   let processed = text;
-
-  // Convert our markers to safe placeholders that won't be stripped
-  // Using «MARKER» format which is unlikely to appear in normal text and won't be parsed as markdown
-  // Match \x00DEL{id}\x00...content...\x00/DEL\x00
   processed = processed.replace(/\x00DEL(\d+)\x00([\s\S]*?)\x00\/DEL\x00/g,
-    '«DIFFDELETE$1»$2«/DIFFDELETE»');
+    '<diffdelete data-id="$1">$2</diffdelete>');
   processed = processed.replace(/\x00INS(\d+)\x00([\s\S]*?)\x00\/INS\x00/g,
-    '«DIFFINSERT$1»$2«/DIFFINSERT»');
+    '<diffinsert data-id="$1">$2</diffinsert>');
 
-  // Process markdown line by line
-  const lines = processed.split('\n');
-  let html = '';
-  let inList = false;
-  let listType = null;
+  // Step 2: Use marked to parse the markdown (it will preserve our custom tags)
+  let html = marked.parse(processed);
 
-  for (let i = 0; i < lines.length; i++) {
-    let line = lines[i];
-    // Strip placeholders for pattern matching
-    const textOnly = line.replace(/«DIFF(DELETE|INSERT)\d+»|«\/DIFF(DELETE|INSERT)»/g, '');
-    const trimmedText = textOnly.trim();
-
-    // Check for headers
-    const headerMatch = trimmedText.match(/^(#{1,6})\s+(.*)$/);
-    if (headerMatch) {
-      const level = headerMatch[1].length;
-      line = line.replace(/^(\s*)(#{1,6})\s+/, '$1');
-      if (inList) {
-        html += `</${listType}>`;
-        inList = false;
-      }
-      html += `<h${level}>${line}</h${level}>`;
-      continue;
-    }
-
-    // Check for bullet lists
-    const bulletMatch = trimmedText.match(/^[-*]\s+(.*)$/);
-    if (bulletMatch) {
-      if (!inList || listType !== 'ul') {
-        if (inList) html += `</${listType}>`;
-        html += '<ul>';
-        inList = true;
-        listType = 'ul';
-      }
-      line = line.replace(/^(\s*)[-*]\s+/, '$1');
-      html += `<li><p>${line}</p></li>`;
-      continue;
-    }
-
-    // Check for numbered lists
-    const numberedMatch = trimmedText.match(/^(\d+)\.\s+(.*)$/);
-    if (numberedMatch) {
-      if (!inList || listType !== 'ol') {
-        if (inList) html += `</${listType}>`;
-        html += '<ol>';
-        inList = true;
-        listType = 'ol';
-      }
-      line = line.replace(/^(\s*)\d+\.\s+/, '$1');
-      html += `<li><p>${line}</p></li>`;
-      continue;
-    }
-
-    // Check for blockquotes
-    const blockquoteMatch = trimmedText.match(/^>\s*(.*)$/);
-    if (blockquoteMatch) {
-      if (inList) {
-        html += `</${listType}>`;
-        inList = false;
-      }
-      line = line.replace(/^(\s*)>\s*/, '$1');
-      html += `<blockquote><p>${line}</p></blockquote>`;
-      continue;
-    }
-
-    // Close list if needed
-    if (inList && trimmedText !== '') {
-      html += `</${listType}>`;
-      inList = false;
-    }
-
-    // Empty line
-    if (trimmedText === '') {
-      if (inList) {
-        html += `</${listType}>`;
-        inList = false;
-      }
-      continue;
-    }
-
-    // Regular paragraph
-    html += `<p>${line}</p>`;
-  }
-
-  if (inList) {
-    html += `</${listType}>`;
-  }
-
-  // Process inline markdown formatting
-  html = processInlineFormatting(html);
-
-  // Convert placeholders back to actual spans
-  html = html.replace(/«DIFFDELETE(\d+)»([\s\S]*?)«\/DIFFDELETE»/g,
+  // Step 3: Convert our placeholder tags to proper diff spans
+  html = html.replace(/<diffdelete data-id="(\d+)">([\s\S]*?)<\/diffdelete>/g,
     '<span class="diff-delete" data-change-id="$1">$2</span>');
-  html = html.replace(/«DIFFINSERT(\d+)»([\s\S]*?)«\/DIFFINSERT»/g,
+  html = html.replace(/<diffinsert data-id="(\d+)">([\s\S]*?)<\/diffinsert>/g,
     '<span class="diff-insert" data-change-id="$1">$2</span>');
 
   return html;
 }
 
-function processInlineFormatting(html) {
-  // Process bold (**text** or __text__)
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
-
-  // Process italic (*text* or _text_) - careful not to match ** or __
-  html = html.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
-  html = html.replace(/(?<!_)_([^_]+)_(?!_)/g, '<em>$1</em>');
-
-  // Process inline code
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-  // Process strikethrough
-  html = html.replace(/~~([^~]+)~~/g, '<s>$1</s>');
-
-  return html;
-}
+// processInlineFormatting removed - now using marked library for all markdown parsing
 
 function addInlineButtons() {
   const editorEl = document.querySelector('#editor .ProseMirror');
