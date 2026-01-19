@@ -1124,20 +1124,9 @@ async function sendToClaudeAPI(userMessage) {
     return null;
   }
 
-  // Capture current selection fresh from the editor, not from stale state
-  // This fixes a bug where clearDiff() would clear the selection state,
-  // causing subsequent requests to miss the user's new selection
-  const { from, to } = state.editor.state.selection;
-  let selectedText = '';
-  if (from !== to) {
-    selectedText = state.editor.state.doc.textBetween(from, to, '\n');
-    state.selectedText = selectedText;
-    state.selectionStart = from;
-    state.selectionEnd = to;
-  }
-
-  const textToEdit = selectedText || getMarkdownContent();
-  const isSelection = !!selectedText;
+  // Selection was captured on chat input focus (before editor lost focus)
+  const textToEdit = state.selectedText || getMarkdownContent();
+  const isSelection = !!state.selectedText;
 
   state.originalFullContent = getMarkdownContent();
   state.originalHtml = state.editor.getHTML();
@@ -1974,6 +1963,19 @@ function setupResizeHandle() {
 
 function setupEventListeners() {
   const threadInput = document.getElementById('chat-input');
+
+  // Capture selection when user focuses the chat input.
+  // This is critical because clicking into the input causes the editor
+  // to lose focus and collapse its selection. We need to grab it first.
+  threadInput.addEventListener('focus', () => {
+    const { from, to } = state.editor.state.selection;
+    if (from !== to) {
+      state.selectedText = state.editor.state.doc.textBetween(from, to, '\n');
+      state.selectionStart = from;
+      state.selectionEnd = to;
+    }
+  });
+
   threadInput.addEventListener('input', () => {
     threadInput.style.height = 'auto';
     threadInput.style.height = Math.min(threadInput.scrollHeight, 120) + 'px';
