@@ -2203,3 +2203,7 @@ async function init() {
 }
 
 init();
+
+// Expose functions for onclick handlers in dynamically created HTML
+window.acceptAllChanges = acceptChanges;
+window.rejectAllChanges = rejectChanges;
