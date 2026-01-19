@@ -1,19 +1,77 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#4F46E5"/>
-      <stop offset="100%" style="stop-color:#7C3AED"/>
+    <!-- Gradient for inkwell body -->
+    <linearGradient id="inkwellGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4a5568"/>
+      <stop offset="50%" style="stop-color:#2d3748"/>
+      <stop offset="100%" style="stop-color:#1a202c"/>
     </linearGradient>
+    <!-- Gradient for ink surface -->
+    <linearGradient id="inkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#1e3a8a"/>
+    </linearGradient>
+    <!-- Gradient for quill -->
+    <linearGradient id="quillGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fefefe"/>
+      <stop offset="100%" style="stop-color:#e2e8f0"/>
+    </linearGradient>
+    <!-- Gold accent for rim and nib -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#d97706"/>
+    </linearGradient>
+    <!-- Shadow gradient -->
+    <radialGradient id="shadowGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="70%" style="stop-color:#000000;stop-opacity:0.3"/>
+      <stop offset="100%" style="stop-color:#000000;stop-opacity:0"/>
+    </radialGradient>
   </defs>
-  <!-- Background circle -->
-  <circle cx="512" cy="512" r="480" fill="url(#bgGrad)"/>
-  <!-- Pen/quill shape -->
-  <g transform="translate(512, 512) rotate(-45) translate(-512, -512)">
-    <!-- Pen body -->
-    <path d="M300 724 L512 300 L724 724 L512 650 Z" fill="white" opacity="0.95"/>
-    <!-- Pen tip -->
-    <path d="M480 300 L512 200 L544 300 Z" fill="#FCD34D"/>
-    <!-- Ink line -->
-    <rect x="496" y="400" width="32" height="200" rx="8" fill="#1E1B4B" opacity="0.3"/>
-  </g>
+
+  <!-- Shadow under inkwell -->
+  <ellipse cx="400" cy="820" rx="280" ry="80" fill="url(#shadowGrad)"/>
+
+  <!-- Inkwell base -->
+  <ellipse cx="400" cy="760" rx="240" ry="80" fill="url(#inkwellGrad)"/>
+
+  <!-- Inkwell cylinder body -->
+  <path d="M160 520 L160 760 Q160 840 400 840 Q640 840 640 760 L640 520 Q640 440 400 440 Q160 440 160 520 Z"
+        fill="url(#inkwellGrad)"/>
+
+  <!-- Inkwell rim - gold band -->
+  <ellipse cx="400" cy="520" rx="240" ry="80" fill="url(#goldGrad)"/>
+  <ellipse cx="400" cy="530" rx="220" ry="70" fill="url(#inkwellGrad)"/>
+
+  <!-- Ink surface -->
+  <ellipse cx="400" cy="540" rx="200" ry="60" fill="url(#inkGrad)"/>
+
+  <!-- Ink surface highlight -->
+  <ellipse cx="350" cy="530" rx="70" ry="20" fill="#60a5fa" opacity="0.4"/>
+
+  <!-- Quill pen shaft -->
+  <line x1="360" y1="500" x2="750" y2="110" stroke="url(#quillGrad)" stroke-width="20" stroke-linecap="round"/>
+
+  <!-- Quill feather body -->
+  <path d="M750 110
+           Q850 60 900 90
+           Q870 140 820 160
+           Q870 180 890 230
+           Q840 210 790 195
+           Q820 250 800 300
+           Q765 250 740 215
+           Q755 270 720 320
+           Q700 265 685 220
+           Q680 270 645 310
+           Q660 255 665 210
+           L750 110 Z"
+        fill="url(#quillGrad)"/>
+
+  <!-- Quill feather spine -->
+  <path d="M750 110 L680 230" stroke="#94a3b8" stroke-width="4" fill="none"/>
+
+  <!-- Quill nib -->
+  <path d="M360 500 L330 570 L355 510 Z" fill="url(#goldGrad)"/>
+
+  <!-- Ink drip from nib -->
+  <ellipse cx="332" cy="590" rx="14" ry="18" fill="url(#inkGrad)"/>
 </svg>
