@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src https://api.anthropic.com;">
+  <title>Inkwell</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Title Bar (for macOS traffic lights spacing) -->
+    <div class="title-bar">
+      <div class="title-bar-drag"></div>
+      <div class="document-title">
+        <span id="file-name">Untitled</span>
+        <span id="modified-indicator" class="hidden">•</span>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Editor Area -->
+      <div class="editor-container">
+        <div class="editor-toolbar">
+          <button class="toolbar-btn" data-action="bold" title="Bold (⌘B)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
+              <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
+            </svg>
+          </button>
+          <button class="toolbar-btn" data-action="italic" title="Italic (⌘I)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="19" y1="4" x2="10" y2="4"></line>
+              <line x1="14" y1="20" x2="5" y2="20"></line>
+              <line x1="15" y1="4" x2="9" y2="20"></line>
+            </svg>
+          </button>
+          <button class="toolbar-btn" data-action="strike" title="Strikethrough">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 4H9a3 3 0 0 0 0 6h6"></path>
+              <path d="M8 20h7a3 3 0 0 0 0-6H4"></path>
+              <line x1="4" y1="12" x2="20" y2="12"></line>
+            </svg>
+          </button>
+          <div class="toolbar-divider"></div>
+          <button class="toolbar-btn" data-action="heading1" title="Heading 1">H1</button>
+          <button class="toolbar-btn" data-action="heading2" title="Heading 2">H2</button>
+          <button class="toolbar-btn" data-action="heading3" title="Heading 3">H3</button>
+          <div class="toolbar-divider"></div>
+          <button class="toolbar-btn" data-action="bulletList" title="Bullet List">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="6" x2="21" y2="6"></line>
+              <line x1="8" y1="12" x2="21" y2="12"></line>
+              <line x1="8" y1="18" x2="21" y2="18"></line>
+              <circle cx="4" cy="6" r="1" fill="currentColor"></circle>
+              <circle cx="4" cy="12" r="1" fill="currentColor"></circle>
+              <circle cx="4" cy="18" r="1" fill="currentColor"></circle>
+            </svg>
+          </button>
+          <button class="toolbar-btn" data-action="orderedList" title="Numbered List">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="10" y1="6" x2="21" y2="6"></line>
+              <line x1="10" y1="12" x2="21" y2="12"></line>
+              <line x1="10" y1="18" x2="21" y2="18"></line>
+              <text x="2" y="8" font-size="8" fill="currentColor" stroke="none">1</text>
+              <text x="2" y="14" font-size="8" fill="currentColor" stroke="none">2</text>
+              <text x="2" y="20" font-size="8" fill="currentColor" stroke="none">3</text>
+            </svg>
+          </button>
+          <button class="toolbar-btn" data-action="taskList" title="Task List">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="5" width="6" height="6" rx="1"></rect>
+              <path d="M9 11l-4-4"></path>
+              <line x1="12" y1="8" x2="21" y2="8"></line>
+              <rect x="3" y="13" width="6" height="6" rx="1"></rect>
+              <line x1="12" y1="16" x2="21" y2="16"></line>
+            </svg>
+          </button>
+          <button class="toolbar-btn" data-action="indent" title="Indent (Tab)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="8" x2="21" y2="8"></line>
+              <line x1="3" y1="16" x2="21" y2="16"></line>
+              <polyline points="7 4 11 8 7 12"></polyline>
+            </svg>
+          </button>
+          <button class="toolbar-btn" data-action="outdent" title="Outdent (Shift+Tab)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="8" x2="21" y2="8"></line>
+              <line x1="3" y1="16" x2="21" y2="16"></line>
+              <polyline points="11 4 7 8 11 12"></polyline>
+            </svg>
+          </button>
+          <div class="toolbar-divider"></div>
+          <button class="toolbar-btn" data-action="blockquote" title="Quote">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21z"></path>
+              <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3z"></path>
+            </svg>
+          </button>
+          <button class="toolbar-btn" data-action="code" title="Inline Code">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
+            </svg>
+          </button>
+          <button class="toolbar-btn" data-action="codeBlock" title="Code Block">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+              <polyline points="9 9 6 12 9 15"></polyline>
+              <polyline points="15 9 18 12 15 15"></polyline>
+            </svg>
+          </button>
+        </div>
+
+        <div id="editor" class="editor"></div>
+
+        <!-- Diff Action Bar (shown when diff is active) - at bottom -->
+        <div id="diff-action-bar" class="diff-action-bar hidden">
+          <span class="diff-label">AI suggested changes</span>
+          <div class="diff-actions">
+            <button id="accept-changes" class="diff-btn accept">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              Accept All
+            </button>
+            <button id="reject-changes" class="diff-btn reject">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+              Reject All
+            </button>
+          </div>
+        </div>
+        <!-- Floating diff buttons container (outside ProseMirror) -->
+        <div id="diff-buttons-container"></div>
+      </div>
+
+      <!-- Resize Handle -->
+      <div class="resize-handle" id="resize-handle"></div>
+
+      <!-- AI Sidebar -->
+      <div class="sidebar" id="sidebar">
+        <div class="sidebar-toggle" id="sidebar-toggle">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </div>
+
+        <div class="sidebar-content">
+          <!-- Thread selector -->
+          <div class="thread-header" id="thread-header">
+            <button class="thread-selector" id="thread-selector">
+              <span class="thread-name" id="thread-name">Thread 1</span>
+              <svg class="thread-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <button class="thread-new-btn" id="new-thread-btn" title="New thread">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+          </div>
+          <!-- Thread dropdown menu -->
+          <div class="thread-menu hidden" id="thread-menu"></div>
+
+          <div class="chat-messages" id="chat-messages">
+            <div class="welcome-message">
+              <p>Hi! I can help you edit your document. Try asking me to:</p>
+              <ul>
+                <li>"Punch up this paragraph"</li>
+                <li>"Make this feel more inevitable"</li>
+                <li>"Find the buried lede"</li>
+                <li>"CEV"</li>
+                <li>"Roast my prose"</li>
+              </ul>
+              <p class="hint">Select text first, or I'll work on the whole document.</p>
+            </div>
+          </div>
+
+          <div class="chat-input-container">
+            <textarea
+              id="chat-input"
+              placeholder="Ask Claude to edit your text..."
+              rows="1"
+            ></textarea>
+            <button id="send-btn" class="send-btn" disabled>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <button class="modal-close" id="close-settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="setting-group">
+          <label for="api-key">Claude API Key</label>
+          <input type="password" id="api-key" placeholder="sk-ant-...">
+          <p class="setting-hint">Your API key is stored locally and never shared.</p>
+        </div>
+        <div class="setting-group">
+          <label class="toggle-label">
+            <input type="checkbox" id="extended-thinking">
+            <span class="toggle-text">Extended Thinking</span>
+          </label>
+          <p class="setting-hint">Give Claude more time to reason through complex edits. Uses more tokens.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="save-settings" class="btn primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="dist/renderer.js"></script>
+</body>
+</html>
