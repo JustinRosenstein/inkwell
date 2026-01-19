@@ -12,11 +12,13 @@ import { marked } from 'marked';
 import DiffMatchPatch from 'diff-match-patch';
 
 // Extension to preserve selection highlight when editor loses focus
+const selectionPreserverKey = new PluginKey('selectionPreserver');
+
 const SelectionPreserver = Extension.create({
   name: 'selectionPreserver',
 
   addProseMirrorPlugins() {
-    const pluginKey = new PluginKey('selectionPreserver');
+    const pluginKey = selectionPreserverKey;
 
     return [
       new Plugin({
@@ -101,6 +103,30 @@ const SelectionPreserver = Extension.create({
     ];
   },
 });
+
+// Get the current selection, whether editor is focused or not.
+// If focused, reads from editor state. If blurred, reads from preserved state.
+function getEditorSelection() {
+  if (!state.editor) return { from: 0, to: 0, text: '' };
+
+  const editorState = state.editor.state;
+  const pluginState = selectionPreserverKey.getState(editorState);
+
+  let from, to;
+  if (pluginState && !pluginState.hasFocus && pluginState.from !== pluginState.to) {
+    // Editor is blurred, use preserved selection
+    from = pluginState.from;
+    to = pluginState.to;
+  } else {
+    // Editor is focused, use current selection
+    ({ from, to } = editorState.selection);
+  }
+
+  if (from === to) return { from: 0, to: 0, text: '' };
+
+  const text = editorState.doc.textBetween(from, to, '\n');
+  return { from, to, text };
+}
 
 // Custom marks for diff highlighting
 const DiffInsert = Mark.create({
@@ -1124,9 +1150,17 @@ async function sendToClaudeAPI(userMessage) {
     return null;
   }
 
-  // Selection was captured on chat input focus (before editor lost focus)
-  const textToEdit = state.selectedText || getMarkdownContent();
-  const isSelection = !!state.selectedText;
+  // Get selection from the single source of truth (the editor/SelectionPreserver plugin)
+  const selection = getEditorSelection();
+  const textToEdit = selection.text || getMarkdownContent();
+  const isSelection = !!selection.text;
+
+  // Update state for use by showDiff
+  if (selection.text) {
+    state.selectedText = selection.text;
+    state.selectionStart = selection.from;
+    state.selectionEnd = selection.to;
+  }
 
   state.originalFullContent = getMarkdownContent();
   state.originalHtml = state.editor.getHTML();
@@ -1963,18 +1997,6 @@ function setupResizeHandle() {
 
 function setupEventListeners() {
   const threadInput = document.getElementById('chat-input');
-
-  // Capture selection when user focuses the chat input.
-  // This is critical because clicking into the input causes the editor
-  // to lose focus and collapse its selection. We need to grab it first.
-  threadInput.addEventListener('focus', () => {
-    const { from, to } = state.editor.state.selection;
-    if (from !== to) {
-      state.selectedText = state.editor.state.doc.textBetween(from, to, '\n');
-      state.selectionStart = from;
-      state.selectionEnd = to;
-    }
-  });
 
   threadInput.addEventListener('input', () => {
     threadInput.style.height = 'auto';
