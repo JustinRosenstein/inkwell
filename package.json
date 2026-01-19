@@ -1,7 +1,7 @@
 {
   "name": "inkwell",
   "productName": "Inkwell",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A minimal WYSIWYG markdown editor with AI-powered editing",
   "main": "main.js",
   "scripts": {
