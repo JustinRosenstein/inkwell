@@ -1362,8 +1362,17 @@ async function handleThreadSubmit() {
     const newLen = result.content.length;
     const lenRatio = Math.min(originalLen, newLen) / Math.max(originalLen, newLen);
 
-    const conversationalStarts = /^(I |Sure|Yes|No|Sorry|Unfortunately|Thanks|Thank you|Of course|Certainly|Here's|That's|This is|The |It |You |To |For |In |As |My |Your |We |They |He |She |If |When |While |Although |However|But |And |Or |Because|Since|After|Before|During|With |Without|About|Like |Unlike)/i;
-    const isLikelyEdit = (lenRatio > 0.1 || originalLen < 200) && !conversationalStarts.test(result.content);
+    // If Claude returned structured JSON with summary field, it's definitely an edit.
+    // Only apply conversational heuristic to raw/unparsed responses.
+    let isLikelyEdit;
+    if (result.summary !== null) {
+      // Structured response with summary = definitely an edit
+      isLikelyEdit = true;
+    } else {
+      // Raw response - use heuristic to detect conversational replies
+      const conversationalStarts = /^(I |Sure|Yes|No|Sorry|Unfortunately|Thanks|Thank you|Of course|Certainly|Here's|That's|This is|The |It |You |To |For |In |As |My |Your |We |They |He |She |If |When |While |Although |However|But |And |Or |Because|Since|After|Before|During|With |Without|About|Like |Unlike)/i;
+      isLikelyEdit = (lenRatio > 0.1 || originalLen < 200) && !conversationalStarts.test(result.content);
+    }
 
     if (isLikelyEdit && result.content !== result.originalText) {
       const changeCount = showDiff(result.originalText, result.content, result.isSelection);
