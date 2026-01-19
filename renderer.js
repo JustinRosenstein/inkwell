@@ -1124,8 +1124,20 @@ async function sendToClaudeAPI(userMessage) {
     return null;
   }
 
-  const textToEdit = state.selectedText || getMarkdownContent();
-  const isSelection = !!state.selectedText;
+  // Capture current selection fresh from the editor, not from stale state
+  // This fixes a bug where clearDiff() would clear the selection state,
+  // causing subsequent requests to miss the user's new selection
+  const { from, to } = state.editor.state.selection;
+  let selectedText = '';
+  if (from !== to) {
+    selectedText = state.editor.state.doc.textBetween(from, to, '\n');
+    state.selectedText = selectedText;
+    state.selectionStart = from;
+    state.selectionEnd = to;
+  }
+
+  const textToEdit = selectedText || getMarkdownContent();
+  const isSelection = !!selectedText;
 
   state.originalFullContent = getMarkdownContent();
   state.originalHtml = state.editor.getHTML();
