@@ -634,6 +634,7 @@ async function loadSettings() {
 
 async function loadContextFiles() {
   const statusEl = document.getElementById('context-folder-status');
+  console.log('loadContextFiles called, path:', state.contextFolderPath);
   if (!state.contextFolderPath) {
     state.contextFiles = [];
     state.contextTruncated = false;
@@ -642,9 +643,11 @@ async function loadContextFiles() {
   }
 
   const result = await window.electronAPI.readContextFolder(state.contextFolderPath);
+  console.log('readContextFolder result:', result);
   if (result.success) {
     state.contextFiles = result.files;
     state.contextTruncated = result.truncated;
+    console.log('Loaded context files:', state.contextFiles.map(f => f.name));
     const sizeKB = Math.round(result.totalSize / 1024);
     let status = `${result.files.length} file${result.files.length !== 1 ? 's' : ''} loaded (${sizeKB}KB)`;
     if (result.truncated) {
@@ -1412,6 +1415,7 @@ async function sendToClaudeAPI(userMessage) {
 
   // Build project context section if files are loaded
   let projectContextSection = '';
+  console.log('Building API call, contextFiles count:', state.contextFiles.length);
   if (state.contextFiles.length > 0) {
     const contextParts = state.contextFiles.map(f => `=== ${f.name} ===\n${f.content}`);
     projectContextSection = `
@@ -1430,17 +1434,22 @@ END PROJECT CONTEXT
 
   const systemPrompt = `You are an AI writing assistant integrated into a markdown editor called Inkwell. Your job is to help users improve their writing.
 
-When the user asks you to edit text, respond with JSON in this exact format:
-{"summary": "brief description of changes", "text": "the edited text here"}
+ALWAYS respond with JSON in this exact format:
+{"reply": "optional conversational response", "summary": "brief description of changes", "text": "the edited text"}
 
-Rules for edits:
+Rules:
+- "reply": Use this for conversational responses, questions, or explanations. Can be null if not needed.
+- "summary": Brief phrase describing what you changed (e.g., "Tightened prose and fixed comma splice"). Can be null if no edit.
+- "text": The edited text. Can be null if just answering a question with no edit.
+
+For edits:
 1. Make the requested changes to the provided text
 2. Preserve the markdown formatting exactly as provided
 3. Keep the same overall structure unless asked to change it
 4. Do NOT add horizontal rules (---) or any dividers unless specifically asked
-5. The "summary" field MUST come first and should be a short phrase describing what you changed (e.g., "Tightened prose and fixed comma splice")
 
-If the user asks a question (not an edit request), respond with plain text (not JSON) - just answer briefly and helpfully.
+For questions (no edit needed):
+- Set "reply" to your answer, and "summary" and "text" to null
 
 Special commands:
 - "CEV" or "coherent extrapolated volition": Rewrite the text to be what the author would have written if they had more time, skill, and clarity. Preserve their voice and intent, but execute it better.
@@ -1579,28 +1588,56 @@ User request: ${userMessage}`;
 
     rawContent = rawContent.trim();
 
-    // Try to parse as JSON (structured edit response)
-    let content = rawContent;
+    // Parse JSON response (always expected now)
+    let content = null;
     let summary = null;
+    let reply = null;
 
-    if (rawContent.startsWith('{')) {
-      try {
-        const parsed = JSON.parse(rawContent);
-        if (parsed.text) {
-          content = parsed.text;
+    try {
+      const parsed = JSON.parse(rawContent);
+      content = parsed.text || null;
+      summary = parsed.summary || null;
+      reply = parsed.reply || null;
+    } catch (e) {
+      // Fallback: try to find JSON embedded in response
+      const jsonMatch = rawContent.match(/\{[\s\S]*"(?:reply|summary|text)"[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[0]);
+          content = parsed.text || null;
           summary = parsed.summary || null;
+          reply = parsed.reply || null;
+        } catch (e2) {
+          // Still not valid JSON, treat entire response as a reply
+          reply = rawContent;
         }
-      } catch (e) {
-        // Not valid JSON, use raw content
+      } else {
+        // No JSON found, treat entire response as a reply
+        reply = rawContent;
       }
     }
 
-    content = content.replace(/^(\s*---\s*\n)+/, '');
-    content = content.replace(/(\n\s*---\s*)+$/, '');
+    // If there's a reply but no edit, show it as a chat message
+    if (reply && !content) {
+      return {
+        content: null,
+        summary: null,
+        reply,
+        isSelection,
+        originalText: textToEdit,
+        wasStreaming: !state.extendedThinking,
+      };
+    }
+
+    if (content) {
+      content = content.replace(/^(\s*---\s*\n)+/, '');
+      content = content.replace(/(\n\s*---\s*)+$/, '');
+    }
 
     return {
       content,
       summary,
+      reply,
       isSelection,
       originalText: textToEdit,
       wasStreaming: !state.extendedThinking,
@@ -1669,9 +1706,13 @@ async function handleThreadSubmit() {
   removeTypingIndicator();
 
   if (result) {
-    // Claude returns JSON {"summary": "...", "text": "..."} for edits,
-    // and plain text for conversational responses. Trust the format.
-    const isEdit = result.summary !== null && result.content !== result.originalText;
+    // If there's a reply (conversational text), show it first
+    if (result.reply) {
+      addChatMessage('assistant', result.reply);
+    }
+
+    // Check if there's an edit to show
+    const isEdit = result.content !== null && result.content !== result.originalText;
 
     if (isEdit) {
       const changeCount = showDiff(result.originalText, result.content, result.isSelection);
@@ -1687,11 +1728,15 @@ async function handleThreadSubmit() {
         addChangesSummaryCard(changeCount, result.summary);
       }
       saveChatData(); // Save again to persist the changes-summary card
-    } else {
-      // Not an edit - remove any streaming card that might have been shown
+    } else if (!result.reply) {
+      // No edit and no reply - shouldn't happen, but handle gracefully
       const existingCard = document.getElementById('changes-summary-card');
       if (existingCard) existingCard.remove();
-      addChatMessage('assistant', result.content);
+      addChatMessage('assistant', '(No response)');
+    } else {
+      // Reply only, no edit - just clean up any streaming card
+      const existingCard = document.getElementById('changes-summary-card');
+      if (existingCard) existingCard.remove();
     }
   }
 }

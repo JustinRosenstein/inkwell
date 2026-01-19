@@ -25,7 +25,12 @@
       "Bash(tar:*)",
       "Bash(/tmp/gh_2.63.2_macOS_amd64/bin/gh:*)",
       "Bash(unzip:*)",
-      "Bash(/tmp/gh_2.85.0_macOS_amd64/bin/gh:*)"
+      "Bash(/tmp/gh_2.85.0_macOS_amd64/bin/gh:*)",
+      "Bash(gh --version:*)",
+      "Bash(/opt/homebrew/bin/gh --version)",
+      "Bash(/usr/local/bin/gh:*)",
+      "Bash(/opt/homebrew/bin/gh repo edit JustinRosenstein/inkwell --visibility public)",
+      "Bash(/opt/homebrew/bin/gh repo edit JustinRosenstein/inkwell --visibility public --accept-visibility-change-consequences)"
     ]
   }
 }
