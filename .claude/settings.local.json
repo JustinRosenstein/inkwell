@@ -30,7 +30,8 @@
       "Bash(/opt/homebrew/bin/gh --version)",
       "Bash(/usr/local/bin/gh:*)",
       "Bash(/opt/homebrew/bin/gh repo edit JustinRosenstein/inkwell --visibility public)",
-      "Bash(/opt/homebrew/bin/gh repo edit JustinRosenstein/inkwell --visibility public --accept-visibility-change-consequences)"
+      "Bash(/opt/homebrew/bin/gh repo edit JustinRosenstein/inkwell --visibility public --accept-visibility-change-consequences)",
+      "Bash(/opt/homebrew/bin/gh release edit v1.0.1 --repo JustinRosenstein/inkwell --draft=false)"
     ]
   }
 }

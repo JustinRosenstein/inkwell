@@ -1963,12 +1963,26 @@ function parseMarkdownWithDiffMarkers(text) {
   // Strategy: Convert markers to HTML-safe placeholders, parse markdown, then convert back to spans
 
   // Step 1: Convert diff markers to HTML-safe placeholder spans BEFORE markdown parsing
-  // These placeholder spans will survive markdown parsing
+  // Handle paragraph breaks within diff markers by wrapping each paragraph separately
   let processed = text;
+
+  // Helper to wrap each paragraph in the diff content with the same tag
+  function wrapParagraphs(match, tag, id, content) {
+    // Split by double newlines (paragraph breaks) but preserve them
+    const parts = content.split(/(\n\n+)/);
+    return parts.map(part => {
+      // Don't wrap empty strings or just whitespace/newlines
+      if (!part.trim() || /^\n+$/.test(part)) {
+        return part;
+      }
+      return `<${tag} data-id="${id}">${part}</${tag}>`;
+    }).join('');
+  }
+
   processed = processed.replace(/\x00DEL(\d+)\x00([\s\S]*?)\x00\/DEL\x00/g,
-    '<diffdelete data-id="$1">$2</diffdelete>');
+    (match, id, content) => wrapParagraphs(match, 'diffdelete', id, content));
   processed = processed.replace(/\x00INS(\d+)\x00([\s\S]*?)\x00\/INS\x00/g,
-    '<diffinsert data-id="$1">$2</diffinsert>');
+    (match, id, content) => wrapParagraphs(match, 'diffinsert', id, content));
 
   // Step 2: Use marked to parse the markdown (it will preserve our custom tags)
   let html = marked.parse(processed);
