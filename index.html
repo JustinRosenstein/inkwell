@@ -113,6 +113,36 @@
           </button>
         </div>
 
+        <!-- Find Bar -->
+        <div id="find-bar" class="find-bar hidden">
+          <div class="find-input-wrapper">
+            <svg class="find-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="find-input" placeholder="Find in document..." autocomplete="off" spellcheck="false">
+            <span id="find-count" class="find-count"></span>
+          </div>
+          <div class="find-nav">
+            <button id="find-prev" class="find-nav-btn" title="Previous (Shift+Enter)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="18 15 12 9 6 15"></polyline>
+              </svg>
+            </button>
+            <button id="find-next" class="find-nav-btn" title="Next (Enter)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <button id="find-close" class="find-close-btn" title="Close (Escape)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+
         <div id="editor" class="editor"></div>
 
         <!-- Diff Action Bar (shown when diff is active) - at bottom -->
@@ -239,6 +269,55 @@
       </div>
       <div class="modal-footer">
         <button id="save-settings" class="btn primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Link Modal -->
+  <div id="link-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2 id="link-modal-title">Insert Link</h2>
+        <button class="modal-close" id="close-link-modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="setting-group">
+          <label for="link-url">URL</label>
+          <input type="url" id="link-url" placeholder="https://example.com">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="remove-link" class="btn danger hidden">Remove Link</button>
+        <button id="insert-link" class="btn primary">Insert</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Thread Confirmation Modal -->
+  <div id="delete-thread-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2>Delete Thread</h2>
+        <button class="modal-close" id="close-delete-thread-modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p id="delete-thread-message">Are you sure you want to delete this thread?</p>
+      </div>
+      <div class="modal-footer">
+        <button id="cancel-delete-thread" class="btn">Cancel</button>
+        <button id="confirm-delete-thread" class="btn danger">Delete</button>
       </div>
     </div>
   </div>

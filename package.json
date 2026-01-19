@@ -11,12 +11,18 @@
     "dev": "npm run build && electron . --dev",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
+    "release": "npm run build && electron-builder --publish always",
     "test": "jest",
     "test:watch": "jest --watch"
   },
   "build": {
     "appId": "com.inkwell.app",
     "productName": "Inkwell",
+    "publish": {
+      "provider": "github",
+      "owner": "JustinRosenstein",
+      "repo": "inkwell"
+    },
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "assets/icon.icns",
@@ -74,7 +80,8 @@
     "@tiptap/pm": "^2.1.13",
     "@tiptap/starter-kit": "^2.1.13",
     "diff-match-patch": "^1.0.5",
-    "turndown": "^7.1.2",
-    "marked": "^11.1.0"
+    "electron-updater": "^6.7.3",
+    "marked": "^11.1.0",
+    "turndown": "^7.1.2"
   }
 }

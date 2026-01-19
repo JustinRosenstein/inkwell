@@ -218,6 +218,116 @@ body {
   margin: 0 8px;
 }
 
+/* Find Bar */
+.find-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-light);
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.find-bar.hidden {
+  display: none;
+}
+
+.find-input-wrapper {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0 10px;
+  gap: 8px;
+}
+
+.find-input-wrapper:focus-within {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.find-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+#find-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  font-family: var(--font-sans);
+}
+
+#find-input::placeholder {
+  color: var(--text-muted);
+}
+
+.find-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.find-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.find-nav-btn,
+.find-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.find-nav-btn:hover,
+.find-close-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.find-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Search highlight styles */
+.search-match {
+  background: #fef08a;
+  border-radius: 2px;
+}
+
+.search-match-current {
+  background: #fb923c;
+  border-radius: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .search-match {
+    background: #854d0e;
+  }
+  .search-match-current {
+    background: #c2410c;
+  }
+}
+
 /* Diff Action Bar */
 .diff-action-bar {
   display: flex;
@@ -726,11 +836,10 @@ body {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 10px 12px;
+  padding: 0;
   background: transparent;
   border: none;
   text-align: left;
-  cursor: pointer;
   transition: background var(--transition-fast);
 }
 
@@ -748,6 +857,75 @@ body {
 
 .thread-menu-item:last-child {
   border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+.thread-menu-item-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 0;
+  padding: 10px 8px 10px 12px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  gap: 8px;
+}
+
+.thread-menu-item-actions {
+  display: flex;
+  align-items: center;
+  padding-right: 8px;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.thread-menu-item:hover .thread-menu-item-actions {
+  opacity: 1;
+}
+
+.thread-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.thread-action-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.thread-action-btn.delete:hover {
+  color: var(--danger-color);
+}
+
+.thread-action-btn.complete:hover {
+  color: var(--success-color);
+}
+
+.thread-menu-item.completed .thread-action-btn.complete {
+  color: var(--success-color);
+}
+
+.thread-completed-icon {
+  color: var(--success-color);
+  font-size: 12px;
+  margin-right: 4px;
+}
+
+.thread-menu-item.completed .thread-menu-item-name {
+  color: var(--text-muted);
+  text-decoration: line-through;
 }
 
 .thread-menu-item-name {
@@ -976,6 +1154,10 @@ body {
   animation: modalIn 0.2s ease;
 }
 
+.modal-content.modal-small {
+  max-width: 340px;
+}
+
 @keyframes modalIn {
   from {
     opacity: 0;
@@ -1161,6 +1343,16 @@ body {
   background: var(--accent-hover);
 }
 
+.btn.danger {
+  background: transparent;
+  color: var(--danger-color);
+  border: 1px solid var(--danger-border);
+}
+
+.btn.danger:hover {
+  background: var(--danger-bg);
+}
+
 /* Error states */
 .error-message {
   background: var(--danger-bg);
@@ -1169,6 +1361,58 @@ body {
   border-radius: var(--radius-md);
   font-size: 13px;
   margin-bottom: 16px;
+}
+
+/* Error Card */
+.error-card {
+  display: flex;
+  gap: 12px;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.error-card-icon {
+  flex-shrink: 0;
+  color: var(--danger-color);
+}
+
+.error-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.error-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--danger-color);
+  margin-bottom: 2px;
+}
+
+.error-card-message {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.error-card-action {
+  margin-top: 8px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--danger-color);
+  border-radius: var(--radius-sm);
+  color: var(--danger-color);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.error-card-action:hover {
+  background: var(--danger-color);
+  color: white;
 }
 
 /* Scrollbar styling */
@@ -1272,4 +1516,20 @@ body {
 .changes-summary-btn.reject:hover {
   background: var(--danger-color);
   color: white;
+}
+
+.changes-summary-status {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-light);
+}
+
+.changes-summary-status.accepted {
+  color: var(--success-color);
+}
+
+.changes-summary-status.rejected {
+  color: var(--text-tertiary);
 }

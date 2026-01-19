@@ -104,6 +104,84 @@ const SelectionPreserver = Extension.create({
   },
 });
 
+// Search/Find extension
+const searchPluginKey = new PluginKey('search');
+
+const SearchHighlight = Extension.create({
+  name: 'searchHighlight',
+
+  addStorage() {
+    return {
+      searchTerm: '',
+      results: [],
+      currentIndex: 0,
+    };
+  },
+
+  addProseMirrorPlugins() {
+    const storage = this.storage;
+
+    return [
+      new Plugin({
+        key: searchPluginKey,
+        state: {
+          init() {
+            return DecorationSet.empty;
+          },
+          apply(tr, oldDecorations, oldState, newState) {
+            const meta = tr.getMeta(searchPluginKey);
+            if (meta?.type === 'search') {
+              const { term, currentIndex } = meta;
+              storage.searchTerm = term;
+              storage.currentIndex = currentIndex;
+
+              if (!term) {
+                storage.results = [];
+                return DecorationSet.empty;
+              }
+
+              // Find all matches
+              const decorations = [];
+              const results = [];
+              const searchLower = term.toLowerCase();
+
+              newState.doc.descendants((node, pos) => {
+                if (node.isText) {
+                  const text = node.text.toLowerCase();
+                  let index = 0;
+                  while ((index = text.indexOf(searchLower, index)) !== -1) {
+                    const from = pos + index;
+                    const to = from + term.length;
+                    results.push({ from, to });
+                    const isCurrent = results.length - 1 === currentIndex;
+                    decorations.push(
+                      Decoration.inline(from, to, {
+                        class: isCurrent ? 'search-match-current' : 'search-match',
+                      })
+                    );
+                    index += 1;
+                  }
+                }
+              });
+
+              storage.results = results;
+              return DecorationSet.create(newState.doc, decorations);
+            }
+
+            // Map decorations through document changes
+            return oldDecorations.map(tr.mapping, tr.doc);
+          },
+        },
+        props: {
+          decorations(state) {
+            return this.getState(state);
+          },
+        },
+      }),
+    ];
+  },
+});
+
 // Get the current selection, whether editor is focused or not.
 // If focused, reads from editor state. If blurred, reads from preserved state.
 function getEditorSelection() {
@@ -278,6 +356,7 @@ function initEditor() {
       DiffInsert,
       DiffDelete,
       SelectionPreserver,
+      SearchHighlight,
     ],
     content: '<p></p>',
     onUpdate: ({ editor }) => {
@@ -682,6 +761,36 @@ function addChatMessage(role, content, skipSave = false) {
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
+function addErrorMessage(title, message, action = null) {
+  const messagesContainer = document.getElementById('chat-messages');
+  const welcomeMessage = messagesContainer.querySelector('.welcome-message');
+  if (welcomeMessage) {
+    welcomeMessage.remove();
+  }
+
+  const errorDiv = document.createElement('div');
+  errorDiv.className = 'error-card';
+
+  let html = `
+    <div class="error-card-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+    </div>
+    <div class="error-card-content">
+      <div class="error-card-title">${escapeHtml(title)}</div>
+      <div class="error-card-message">${escapeHtml(message)}</div>
+      ${action ? `<button class="error-card-action" onclick="${action.handler}">${escapeHtml(action.label)}</button>` : ''}
+    </div>
+  `;
+
+  errorDiv.innerHTML = html;
+  messagesContainer.appendChild(errorDiv);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
 function addTypingIndicator() {
   const messagesContainer = document.getElementById('chat-messages');
   const typingDiv = document.createElement('div');
@@ -797,6 +906,37 @@ function removeChangesSummaryCard() {
 
   // Remove from state
   state.chatMessages = state.chatMessages.filter(m => m.role !== 'changes-summary');
+}
+
+function resolveChangesSummaryCard(status) {
+  const card = document.getElementById('changes-summary-card');
+  if (!card) return;
+
+  // Remove the action buttons
+  const actions = card.querySelector('.changes-summary-actions');
+  if (actions) {
+    actions.remove();
+  }
+
+  // Add resolved status
+  const statusEl = document.createElement('div');
+  statusEl.className = `changes-summary-status ${status}`;
+  if (status === 'accepted') {
+    statusEl.textContent = '✓ Accepted';
+  } else if (status === 'rejected') {
+    statusEl.textContent = '✗ Reverted';
+  }
+  card.appendChild(statusEl);
+
+  // Remove the id so a new card can be created later
+  card.removeAttribute('id');
+
+  // Update state - mark as resolved instead of removing
+  const msgIndex = state.chatMessages.findIndex(m => m.role === 'changes-summary');
+  if (msgIndex !== -1) {
+    state.chatMessages[msgIndex].role = 'changes-resolved';
+    state.chatMessages[msgIndex].status = status;
+  }
 }
 
 function clearChat(skipSave = false) {
@@ -1064,22 +1204,56 @@ function updateThreadMenu() {
     const isActive = thread.id === state.activeThreadId;
     const msgCount = thread.messages.length;
     const hasDiff = thread.diffState !== null;
+    const isCompleted = thread.completed === true;
     return `
-      <button class="thread-menu-item ${isActive ? 'active' : ''}" data-thread-id="${thread.id}">
-        <span class="thread-menu-item-name">${escapeHtml(thread.name)}</span>
-        <span class="thread-menu-item-meta">
-          ${hasDiff ? '<span class="thread-diff-indicator" title="Has pending changes">●</span>' : ''}
-          <span class="thread-menu-item-count">${msgCount} msg${msgCount !== 1 ? 's' : ''}</span>
-        </span>
-      </button>
+      <div class="thread-menu-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}" data-thread-id="${thread.id}">
+        <button class="thread-menu-item-main" data-thread-id="${thread.id}">
+          ${isCompleted ? '<span class="thread-completed-icon">✓</span>' : ''}
+          <span class="thread-menu-item-name">${escapeHtml(thread.name)}</span>
+          <span class="thread-menu-item-meta">
+            ${hasDiff ? '<span class="thread-diff-indicator" title="Has pending changes">●</span>' : ''}
+            <span class="thread-menu-item-count">${msgCount} msg${msgCount !== 1 ? 's' : ''}</span>
+          </span>
+        </button>
+        <div class="thread-menu-item-actions">
+          <button class="thread-action-btn complete" data-thread-id="${thread.id}" title="${isCompleted ? 'Mark incomplete' : 'Mark complete'}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </button>
+          <button class="thread-action-btn delete" data-thread-id="${thread.id}" title="Delete thread">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
     `;
   }).join('');
 
-  // Add click handlers
-  menu.querySelectorAll('.thread-menu-item').forEach(item => {
-    item.addEventListener('click', () => {
+  // Add click handlers for main button (switch thread)
+  menu.querySelectorAll('.thread-menu-item-main').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
       switchToThread(item.dataset.threadId);
       closeThreadMenu();
+    });
+  });
+
+  // Add click handlers for complete button
+  menu.querySelectorAll('.thread-action-btn.complete').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleThreadComplete(btn.dataset.threadId);
+    });
+  });
+
+  // Add click handlers for delete button
+  menu.querySelectorAll('.thread-action-btn.delete').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showDeleteThreadConfirmation(btn.dataset.threadId);
     });
   });
 }
@@ -1103,6 +1277,77 @@ function closeThreadMenu() {
   const menu = document.getElementById('thread-menu');
   selector.classList.remove('open');
   menu.classList.add('hidden');
+}
+
+function toggleThreadComplete(threadId) {
+  const thread = state.threads.find(t => t.id === threadId);
+  if (!thread) return;
+
+  thread.completed = !thread.completed;
+  updateThreadMenu();
+  updateThreadUI();
+  saveChatData();
+}
+
+// State for delete confirmation modal
+let pendingDeleteThreadId = null;
+
+function showDeleteThreadConfirmation(threadId) {
+  const thread = state.threads.find(t => t.id === threadId);
+  if (!thread) return;
+
+  pendingDeleteThreadId = threadId;
+
+  const modal = document.getElementById('delete-thread-modal');
+  const message = document.getElementById('delete-thread-message');
+  message.textContent = `Are you sure you want to delete "${thread.name}"?`;
+  modal.classList.remove('hidden');
+}
+
+function closeDeleteThreadModal() {
+  const modal = document.getElementById('delete-thread-modal');
+  modal.classList.add('hidden');
+  pendingDeleteThreadId = null;
+}
+
+function confirmDeleteThread() {
+  if (!pendingDeleteThreadId) return;
+
+  deleteThread(pendingDeleteThreadId);
+  closeDeleteThreadModal();
+}
+
+function deleteThread(threadId) {
+  const threadIndex = state.threads.findIndex(t => t.id === threadId);
+  if (threadIndex === -1) return;
+
+  const isDeletingLastThread = state.threads.length === 1;
+
+  // If deleting the active thread, switch to another one first (or handle last thread case)
+  if (threadId === state.activeThreadId) {
+    if (isDeletingLastThread) {
+      // Create a fresh thread before deleting the last one
+      const freshThread = createThread();
+      state.threads.push(freshThread);
+      state.activeThreadId = freshThread.id;
+      state.chatMessages = [];
+      // Clear any pending diff state
+      state.hasPendingDiff = false;
+      state.pendingOriginalContent = null;
+      state.pendingProposedContent = null;
+      clearDiff();
+      loadActiveThread();
+      updateThreadUI();
+    } else {
+      const newActiveIndex = threadIndex === 0 ? 1 : threadIndex - 1;
+      switchToThread(state.threads[newActiveIndex].id);
+    }
+  }
+
+  // Remove the thread
+  state.threads.splice(threadIndex, 1);
+  updateThreadMenu();
+  saveChatData();
 }
 
 // Generate a smart name for a thread based on first message
@@ -1211,14 +1456,21 @@ ${textToEdit}
 User request: ${userMessage}`;
 
   try {
+    // Build conversation history from chat messages
+    // Filter out special message types (changes-summary, changes-resolved)
+    const conversationHistory = state.chatMessages
+      .filter(m => m.role === 'user' || m.role === 'assistant')
+      .map(m => ({ role: m.role, content: m.content }));
+
+    // Add the current user prompt as the final message
+    conversationHistory.push({ role: 'user', content: userPrompt });
+
     // Build request body
     const requestBody = {
       model: 'claude-sonnet-4-20250514',
       max_tokens: state.extendedThinking ? 16000 : 4096,
       system: systemPrompt,
-      messages: [
-        { role: 'user', content: userPrompt }
-      ],
+      messages: conversationHistory,
       // Enable web search tool
       tools: [
         { type: 'web_search_20250305', name: 'web_search' }
@@ -1355,8 +1607,44 @@ User request: ${userMessage}`;
     };
   } catch (error) {
     console.error('Claude API error:', error);
-    addChatMessage('assistant', `Error: ${error.message}`);
+    handleAPIError(error);
     return null;
+  }
+}
+
+function handleAPIError(error) {
+  const message = error.message || 'An unknown error occurred';
+
+  // Check for specific error types
+  if (message.includes('invalid_api_key') || message.includes('Invalid API Key')) {
+    addErrorMessage(
+      'Invalid API Key',
+      'Your API key appears to be invalid. Please check your settings.',
+      { label: 'Open Settings', handler: 'openSettingsModal()' }
+    );
+  } else if (message.includes('rate_limit') || message.includes('Rate limit')) {
+    addErrorMessage(
+      'Rate Limited',
+      'Too many requests. Please wait a moment and try again.'
+    );
+  } else if (message.includes('overloaded') || message.includes('529')) {
+    addErrorMessage(
+      'Service Busy',
+      'Claude is currently overloaded. Please try again in a few moments.'
+    );
+  } else if (message.includes('Failed to fetch') || message.includes('NetworkError')) {
+    addErrorMessage(
+      'Connection Error',
+      'Could not connect to Claude. Please check your internet connection.'
+    );
+  } else if (!state.apiKey) {
+    addErrorMessage(
+      'No API Key',
+      'Please add your Claude API key in settings to use AI editing.',
+      { label: 'Open Settings', handler: 'openSettingsModal()' }
+    );
+  } else {
+    addErrorMessage('Request Failed', message);
   }
 }
 
@@ -1870,7 +2158,7 @@ function finalizeChanges() {
   clearDiff();
   setModified(true);
   triggerAutosave();
-  addChatMessage('assistant', 'Changes applied!');
+  resolveChangesSummaryCard('accepted');
 
   requestAnimationFrame(() => {
     editorElement.scrollTop = scrollPos;
@@ -1907,7 +2195,7 @@ function acceptChanges() {
 
   setModified(true);
   triggerAutosave();
-  addChatMessage('assistant', 'All changes accepted!');
+  resolveChangesSummaryCard('accepted');
 
   requestAnimationFrame(() => {
     editorElement.scrollTop = scrollPos;
@@ -1936,7 +2224,7 @@ function rejectChanges() {
   const thread = getActiveThread();
   if (thread) thread.diffState = null;
 
-  addChatMessage('assistant', 'Changes rejected. The original text has been restored.');
+  resolveChangesSummaryCard('rejected');
 
   requestAnimationFrame(() => {
     editorElement.scrollTop = scrollPos;
@@ -1959,8 +2247,6 @@ function clearDiff() {
   // Clear floating buttons
   const container = document.getElementById('diff-buttons-container');
   if (container) container.innerHTML = '';
-  // Remove the changes summary card
-  removeChangesSummaryCard();
 }
 
 function setupResizeHandle() {
@@ -2045,6 +2331,36 @@ function setupEventListeners() {
   window.electronAPI.onMenuSave(() => saveDocument());
   window.electronAPI.onMenuSaveAs(() => saveDocumentAs());
   window.electronAPI.onMenuSettings(() => openSettingsModal());
+  window.electronAPI.onMenuFind(() => openFindBar());
+
+  // Find bar event listeners
+  document.getElementById('find-input').addEventListener('input', handleFindInput);
+  document.getElementById('find-input').addEventListener('keydown', handleFindKeydown);
+  document.getElementById('find-prev').addEventListener('click', findPrevious);
+  document.getElementById('find-next').addEventListener('click', findNext);
+  document.getElementById('find-close').addEventListener('click', closeFindBar);
+
+  // Link modal event listeners
+  document.getElementById('close-link-modal').addEventListener('click', closeLinkModal);
+  document.getElementById('insert-link').addEventListener('click', insertLink);
+  document.getElementById('remove-link').addEventListener('click', removeLink);
+  document.getElementById('link-url').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      insertLink();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      closeLinkModal();
+    }
+  });
+  document.querySelector('#link-modal .modal-backdrop').addEventListener('click', closeLinkModal);
+
+  // Delete thread confirmation modal event listeners
+  document.getElementById('close-delete-thread-modal').addEventListener('click', closeDeleteThreadModal);
+  document.getElementById('cancel-delete-thread').addEventListener('click', closeDeleteThreadModal);
+  document.getElementById('confirm-delete-thread').addEventListener('click', confirmDeleteThread);
+  document.querySelector('#delete-thread-modal .modal-backdrop').addEventListener('click', closeDeleteThreadModal);
+
   window.electronAPI.onFileOpened(async ({ filePath, content }) => {
     state.currentFilePath = filePath;
     setContentFromMarkdown(content);
@@ -2081,6 +2397,10 @@ function setupEventListeners() {
           e.preventDefault();
           executeToolbarAction('italic');
           break;
+        case 'k':
+          e.preventDefault();
+          openLinkModal();
+          break;
         case 'Enter':
           if (state.hasPendingDiff) {
             e.preventDefault();
@@ -2090,9 +2410,19 @@ function setupEventListeners() {
       }
     }
 
-    if (e.key === 'Escape' && state.hasPendingDiff) {
-      e.preventDefault();
-      rejectChanges();
+    if (e.key === 'Escape') {
+      const findBar = document.getElementById('find-bar');
+      const linkModal = document.getElementById('link-modal');
+      if (!linkModal.classList.contains('hidden')) {
+        e.preventDefault();
+        closeLinkModal();
+      } else if (!findBar.classList.contains('hidden')) {
+        e.preventDefault();
+        closeFindBar();
+      } else if (state.hasPendingDiff) {
+        e.preventDefault();
+        rejectChanges();
+      }
     }
   });
 }
@@ -2101,6 +2431,175 @@ function updateSendButton() {
   const input = document.getElementById('chat-input');
   const sendBtn = document.getElementById('send-btn');
   sendBtn.disabled = !input.value.trim();
+}
+
+// Find bar functions
+function openFindBar() {
+  const findBar = document.getElementById('find-bar');
+  const findInput = document.getElementById('find-input');
+  findBar.classList.remove('hidden');
+  findInput.focus();
+  findInput.select();
+}
+
+function closeFindBar() {
+  const findBar = document.getElementById('find-bar');
+  const findInput = document.getElementById('find-input');
+  findBar.classList.add('hidden');
+  findInput.value = '';
+  clearSearch();
+  state.editor?.commands.focus();
+}
+
+function clearSearch() {
+  if (!state.editor) return;
+  state.editor.view.dispatch(
+    state.editor.view.state.tr.setMeta(searchPluginKey, {
+      type: 'search',
+      term: '',
+      currentIndex: 0,
+    })
+  );
+  updateFindCount();
+}
+
+function handleFindInput(e) {
+  const term = e.target.value;
+  performSearch(term, 0);
+}
+
+function handleFindKeydown(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (e.shiftKey) {
+      findPrevious();
+    } else {
+      findNext();
+    }
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    closeFindBar();
+  }
+}
+
+function performSearch(term, currentIndex) {
+  if (!state.editor) return;
+
+  state.editor.view.dispatch(
+    state.editor.view.state.tr.setMeta(searchPluginKey, {
+      type: 'search',
+      term,
+      currentIndex,
+    })
+  );
+
+  updateFindCount();
+  scrollToCurrentMatch();
+}
+
+function findNext() {
+  const storage = state.editor?.storage.searchHighlight;
+  if (!storage || storage.results.length === 0) return;
+
+  const newIndex = (storage.currentIndex + 1) % storage.results.length;
+  performSearch(storage.searchTerm, newIndex);
+}
+
+function findPrevious() {
+  const storage = state.editor?.storage.searchHighlight;
+  if (!storage || storage.results.length === 0) return;
+
+  const newIndex = (storage.currentIndex - 1 + storage.results.length) % storage.results.length;
+  performSearch(storage.searchTerm, newIndex);
+}
+
+function updateFindCount() {
+  const countEl = document.getElementById('find-count');
+  const storage = state.editor?.storage.searchHighlight;
+
+  if (!storage || !storage.searchTerm || storage.results.length === 0) {
+    countEl.textContent = storage?.searchTerm ? 'No results' : '';
+    return;
+  }
+
+  countEl.textContent = `${storage.currentIndex + 1} of ${storage.results.length}`;
+}
+
+function scrollToCurrentMatch() {
+  const storage = state.editor?.storage.searchHighlight;
+  if (!storage || storage.results.length === 0) return;
+
+  const match = storage.results[storage.currentIndex];
+  if (!match) return;
+
+  // Get the DOM position of the match
+  const view = state.editor.view;
+  const coords = view.coordsAtPos(match.from);
+  const editorEl = document.getElementById('editor');
+  const editorRect = editorEl.getBoundingClientRect();
+
+  // Scroll if the match is outside the visible area
+  if (coords.top < editorRect.top + 50 || coords.top > editorRect.bottom - 50) {
+    const scrollTop = editorEl.scrollTop + (coords.top - editorRect.top) - editorRect.height / 3;
+    editorEl.scrollTo({ top: scrollTop, behavior: 'smooth' });
+  }
+}
+
+// Link modal functions
+function openLinkModal() {
+  const modal = document.getElementById('link-modal');
+  const urlInput = document.getElementById('link-url');
+  const removeBtn = document.getElementById('remove-link');
+  const insertBtn = document.getElementById('insert-link');
+  const title = document.getElementById('link-modal-title');
+
+  // Check if we're editing an existing link
+  const existingLink = state.editor?.getAttributes('link').href;
+
+  if (existingLink) {
+    urlInput.value = existingLink;
+    removeBtn.classList.remove('hidden');
+    insertBtn.textContent = 'Update';
+    title.textContent = 'Edit Link';
+  } else {
+    urlInput.value = '';
+    removeBtn.classList.add('hidden');
+    insertBtn.textContent = 'Insert';
+    title.textContent = 'Insert Link';
+  }
+
+  modal.classList.remove('hidden');
+  urlInput.focus();
+  urlInput.select();
+}
+
+function closeLinkModal() {
+  const modal = document.getElementById('link-modal');
+  modal.classList.add('hidden');
+  state.editor?.commands.focus();
+}
+
+function insertLink() {
+  const urlInput = document.getElementById('link-url');
+  let url = urlInput.value.trim();
+
+  if (!url) {
+    closeLinkModal();
+    return;
+  }
+
+  // Add https:// if no protocol specified
+  if (!/^https?:\/\//i.test(url) && !url.startsWith('mailto:')) {
+    url = 'https://' + url;
+  }
+
+  state.editor?.chain().focus().setLink({ href: url }).run();
+  closeLinkModal();
+}
+
+function removeLink() {
+  state.editor?.chain().focus().unsetLink().run();
+  closeLinkModal();
 }
 
 async function init() {

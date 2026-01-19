@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { autoUpdater } = require('electron-updater');
 
 // Set app name - must be done before app is ready
 if (process.platform === 'darwin') {
@@ -78,7 +79,13 @@ function createMenu() {
         { role: 'cut' },
         { role: 'copy' },
         { role: 'paste' },
-        { role: 'selectAll' }
+        { role: 'selectAll' },
+        { type: 'separator' },
+        {
+          label: 'Find',
+          accelerator: 'CmdOrCtrl+F',
+          click: () => mainWindow.webContents.send('menu-find')
+        }
       ]
     },
     {
@@ -365,11 +372,43 @@ app.whenReady().then(() => {
   createWindow();
   createMenu();
 
+  // Check for updates (only in production builds)
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdatesAndNotify();
+  }
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
     }
   });
+});
+
+// Auto-updater events
+autoUpdater.on('update-available', (info) => {
+  dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: 'Update Available',
+    message: `A new version (${info.version}) is available. It will be downloaded in the background.`,
+    buttons: ['OK']
+  });
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: 'Update Ready',
+    message: `Version ${info.version} has been downloaded. Restart now to install?`,
+    buttons: ['Restart', 'Later']
+  }).then((result) => {
+    if (result.response === 0) {
+      autoUpdater.quitAndInstall();
+    }
+  });
+});
+
+autoUpdater.on('error', (err) => {
+  console.error('Auto-updater error:', err);
 });
 
 app.on('window-all-closed', () => {
