@@ -160,6 +160,9 @@ const state = {
   isModified: false,
   apiKey: '',
   extendedThinking: false,
+  contextFolderPath: '',
+  contextFiles: [], // Array of { name, content }
+  contextTruncated: false,
   chatMessages: [],
   // Thread support
   threads: [],  // Array of { id, name, messages }
@@ -513,23 +516,81 @@ async function loadSettings() {
   const settings = await window.electronAPI.getSettings();
   state.apiKey = settings.apiKey || '';
   state.extendedThinking = settings.extendedThinking || false;
+  state.contextFolderPath = settings.contextFolderPath || '';
   document.getElementById('api-key').value = state.apiKey;
   document.getElementById('extended-thinking').checked = state.extendedThinking;
+  document.getElementById('context-folder').value = state.contextFolderPath;
+
+  // Load context files if folder is set
+  if (state.contextFolderPath) {
+    await loadContextFiles();
+  }
+}
+
+async function loadContextFiles() {
+  const statusEl = document.getElementById('context-folder-status');
+  if (!state.contextFolderPath) {
+    state.contextFiles = [];
+    state.contextTruncated = false;
+    if (statusEl) statusEl.textContent = '';
+    return;
+  }
+
+  const result = await window.electronAPI.readContextFolder(state.contextFolderPath);
+  if (result.success) {
+    state.contextFiles = result.files;
+    state.contextTruncated = result.truncated;
+    const sizeKB = Math.round(result.totalSize / 1024);
+    let status = `${result.files.length} file${result.files.length !== 1 ? 's' : ''} loaded (${sizeKB}KB)`;
+    if (result.truncated) {
+      status += ` - ${result.message}`;
+    }
+    if (statusEl) statusEl.textContent = status;
+  } else {
+    state.contextFiles = [];
+    state.contextTruncated = false;
+    if (statusEl) statusEl.textContent = `Error: ${result.error}`;
+  }
 }
 
 async function saveSettings() {
   const apiKey = document.getElementById('api-key').value.trim();
   const extendedThinking = document.getElementById('extended-thinking').checked;
+  const contextFolderPath = document.getElementById('context-folder').value;
   state.apiKey = apiKey;
   state.extendedThinking = extendedThinking;
-  await window.electronAPI.saveSettings({ apiKey, extendedThinking });
+  state.contextFolderPath = contextFolderPath;
+  await window.electronAPI.saveSettings({ apiKey, extendedThinking, contextFolderPath });
+
+  // Reload context files if path changed
+  await loadContextFiles();
   closeSettingsModal();
+}
+
+async function selectContextFolder() {
+  const result = await window.electronAPI.selectContextFolder();
+  if (result.success) {
+    document.getElementById('context-folder').value = result.folderPath;
+    state.contextFolderPath = result.folderPath;
+    await loadContextFiles();
+  }
+}
+
+function clearContextFolder() {
+  document.getElementById('context-folder').value = '';
+  state.contextFolderPath = '';
+  state.contextFiles = [];
+  state.contextTruncated = false;
+  document.getElementById('context-folder-status').textContent = '';
 }
 
 function openSettingsModal() {
   document.getElementById('settings-modal').classList.remove('hidden');
   document.getElementById('api-key').value = state.apiKey;
   document.getElementById('extended-thinking').checked = state.extendedThinking;
+  document.getElementById('context-folder').value = state.contextFolderPath;
+  // Update status display
+  loadContextFiles();
 }
 
 function closeSettingsModal() {
@@ -1069,6 +1130,24 @@ async function sendToClaudeAPI(userMessage) {
   state.originalFullContent = getMarkdownContent();
   state.originalHtml = state.editor.getHTML();
 
+  // Build project context section if files are loaded
+  let projectContextSection = '';
+  if (state.contextFiles.length > 0) {
+    const contextParts = state.contextFiles.map(f => `=== ${f.name} ===\n${f.content}`);
+    projectContextSection = `
+
+PROJECT CONTEXT:
+The following files are part of the user's project and provide important context for their writing:
+
+${contextParts.join('\n\n')}
+
+END PROJECT CONTEXT
+`;
+    if (state.contextTruncated) {
+      projectContextSection += '\n(Note: Some context files were omitted due to size limits.)\n';
+    }
+  }
+
   const systemPrompt = `You are an AI writing assistant integrated into a markdown editor called Inkwell. Your job is to help users improve their writing.
 
 When the user asks you to edit text, respond with JSON in this exact format:
@@ -1088,7 +1167,7 @@ Special commands:
 
 ${isSelection
     ? `IMPORTANT: The user has SELECTED a specific portion of their document. When they say "this", "it", or similar pronouns, they mean the selected text below. Edit ONLY this selection and return only the edited selection.`
-    : `The user is editing their ENTIRE document. No text is currently selected.`}`;
+    : `The user is editing their ENTIRE document. No text is currently selected.`}${projectContextSection}`;
 
   const userPrompt = `Here is the text to edit:
 
@@ -2013,6 +2092,8 @@ function setupEventListeners() {
 
   document.getElementById('close-settings').addEventListener('click', closeSettingsModal);
   document.getElementById('save-settings').addEventListener('click', saveSettings);
+  document.getElementById('select-context-folder').addEventListener('click', selectContextFolder);
+  document.getElementById('clear-context-folder').addEventListener('click', clearContextFolder);
   document.querySelector('.modal-backdrop').addEventListener('click', closeSettingsModal);
 
   // Thread UI

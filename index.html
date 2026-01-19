@@ -226,6 +226,16 @@
           </label>
           <p class="setting-hint">Give Claude more time to reason through complex edits. Uses more tokens.</p>
         </div>
+        <div class="setting-group">
+          <label for="context-folder">Project Context Folder</label>
+          <div class="folder-picker">
+            <input type="text" id="context-folder" placeholder="No folder selected" readonly>
+            <button id="select-context-folder" class="btn secondary">Browse...</button>
+            <button id="clear-context-folder" class="btn secondary" title="Clear">✕</button>
+          </div>
+          <p class="setting-hint">Include .txt and .md files from this folder as context for Claude. Max 200KB total.</p>
+          <p id="context-folder-status" class="setting-hint"></p>
+        </div>
       </div>
       <div class="modal-footer">
         <button id="save-settings" class="btn primary">Save</button>

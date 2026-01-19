@@ -1066,6 +1066,37 @@ body {
   margin-top: 6px;
 }
 
+.folder-picker {
+  display: flex;
+  gap: 8px;
+}
+
+.folder-picker input {
+  flex: 1;
+  background: var(--bg-tertiary);
+  cursor: default;
+}
+
+.folder-picker .btn {
+  padding: 10px 14px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.folder-picker .btn.secondary {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.folder-picker .btn.secondary:hover {
+  background: var(--border-color);
+}
+
+#clear-context-folder {
+  padding: 10px 12px;
+}
+
 /* Toggle checkbox styling */
 .toggle-label {
   display: flex;

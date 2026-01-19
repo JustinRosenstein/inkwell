@@ -290,6 +290,72 @@ ipcMain.handle('save-chat-history', async (event, filePath, threadData) => {
   }
 });
 
+// Project context folder
+ipcMain.handle('select-context-folder', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
+    message: 'Select a folder containing context files (.txt, .md)'
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return { success: false };
+  }
+
+  return { success: true, folderPath: result.filePaths[0] };
+});
+
+ipcMain.handle('read-context-folder', async (event, folderPath) => {
+  if (!folderPath || !fs.existsSync(folderPath)) {
+    return { success: false, error: 'Folder not found' };
+  }
+
+  try {
+    const files = [];
+    let totalSize = 0;
+    const maxTotalSize = 200 * 1024; // 200KB limit (~50k tokens)
+    const allowedExtensions = ['.txt', '.md', '.markdown'];
+
+    const entries = fs.readdirSync(folderPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+
+      const ext = path.extname(entry.name).toLowerCase();
+      if (!allowedExtensions.includes(ext)) continue;
+
+      const filePath = path.join(folderPath, entry.name);
+      const stats = fs.statSync(filePath);
+
+      // Skip files larger than 50KB individually
+      if (stats.size > 50 * 1024) continue;
+
+      // Check if adding this file would exceed total limit
+      if (totalSize + stats.size > maxTotalSize) {
+        return {
+          success: true,
+          files,
+          totalSize,
+          truncated: true,
+          message: `Context truncated at ${Math.round(totalSize / 1024)}KB. Some files were skipped.`
+        };
+      }
+
+      const content = fs.readFileSync(filePath, 'utf-8');
+      files.push({ name: entry.name, content });
+      totalSize += stats.size;
+    }
+
+    return {
+      success: true,
+      files,
+      totalSize,
+      truncated: false
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
 app.whenReady().then(() => {
   // Set dock icon on macOS
   if (process.platform === 'darwin') {

@@ -18,6 +18,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getChatHistory: (filePath) => ipcRenderer.invoke('get-chat-history', filePath),
   saveChatHistory: (filePath, messages) => ipcRenderer.invoke('save-chat-history', filePath, messages),
 
+  // Project context
+  selectContextFolder: () => ipcRenderer.invoke('select-context-folder'),
+  readContextFolder: (folderPath) => ipcRenderer.invoke('read-context-folder', folderPath),
+
   // Menu events
   onMenuNew: (callback) => ipcRenderer.on('menu-new', callback),
   onMenuSave: (callback) => ipcRenderer.on('menu-save', callback),
