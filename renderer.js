@@ -1919,6 +1919,9 @@ function clearDiff() {
   state.proposedContent = '';
   state.proposedHtml = '';
   state.isSelectionEdit = false;
+  state.selectedText = '';
+  state.selectionStart = 0;
+  state.selectionEnd = 0;
   state.diffChanges = [];
   document.getElementById('diff-action-bar').classList.add('hidden');
   // Clear floating buttons
