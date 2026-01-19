@@ -1358,23 +1358,11 @@ async function handleThreadSubmit() {
   removeTypingIndicator();
 
   if (result) {
-    const originalLen = result.originalText.length;
-    const newLen = result.content.length;
-    const lenRatio = Math.min(originalLen, newLen) / Math.max(originalLen, newLen);
+    // Claude returns JSON {"summary": "...", "text": "..."} for edits,
+    // and plain text for conversational responses. Trust the format.
+    const isEdit = result.summary !== null && result.content !== result.originalText;
 
-    // If Claude returned structured JSON with summary field, it's definitely an edit.
-    // Only apply conversational heuristic to raw/unparsed responses.
-    let isLikelyEdit;
-    if (result.summary !== null) {
-      // Structured response with summary = definitely an edit
-      isLikelyEdit = true;
-    } else {
-      // Raw response - use heuristic to detect conversational replies
-      const conversationalStarts = /^(I |Sure|Yes|No|Sorry|Unfortunately|Thanks|Thank you|Of course|Certainly|Here's|That's|This is|The |It |You |To |For |In |As |My |Your |We |They |He |She |If |When |While |Although |However|But |And |Or |Because|Since|After|Before|During|With |Without|About|Like |Unlike)/i;
-      isLikelyEdit = (lenRatio > 0.1 || originalLen < 200) && !conversationalStarts.test(result.content);
-    }
-
-    if (isLikelyEdit && result.content !== result.originalText) {
+    if (isEdit) {
       const changeCount = showDiff(result.originalText, result.content, result.isSelection);
 
       // If streaming was used, card is already shown - just finalize it
