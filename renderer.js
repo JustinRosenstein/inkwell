@@ -1512,6 +1512,7 @@ User request: ${userMessage}`;
     }
 
     let rawContent = '';
+    let replyAlreadyStreamed = false;
 
     if (state.extendedThinking) {
       // Non-streaming path for extended thinking
@@ -1526,10 +1527,11 @@ User request: ${userMessage}`;
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-      let streamingSummary = '';
-      let inSummary = false;
-      let summaryComplete = false;
+      let streamingMessageEl = null;
+      let lastStreamedReply = '';
+      let lastStreamedSummary = '';
       let cardShown = false;
+      let isEditResponse = null; // null = unknown, true = edit, false = reply-only
 
       while (true) {
         const { done, value } = await reader.read();
@@ -1554,26 +1556,61 @@ User request: ${userMessage}`;
                 const text = event.delta.text;
                 rawContent += text;
 
-                // Try to extract and stream the summary
-                if (rawContent.startsWith('{') && !summaryComplete) {
-                  // Look for summary field
-                  const summaryMatch = rawContent.match(/"summary"\s*:\s*"([^"]*)/);
-                  if (summaryMatch) {
-                    inSummary = true;
-                    streamingSummary = summaryMatch[1];
+                // Determine response type once we see the text field
+                if (isEditResponse === null && rawContent.includes('"text"')) {
+                  if (rawContent.match(/"text"\s*:\s*null/)) {
+                    isEditResponse = false;
+                  } else if (rawContent.match(/"text"\s*:\s*"/)) {
+                    isEditResponse = true;
+                  }
+                }
 
-                    // Show card on first summary content
-                    if (!cardShown && streamingSummary.length > 0) {
+                // Stream reply text into a chat message
+                // Match both complete and partial reply strings
+                // Complete: "reply": "some text"
+                // Partial during streaming: "reply": "some text (no closing quote yet)
+                let replyMatch = rawContent.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+                if (!replyMatch) {
+                  // Try matching partial (no closing quote yet)
+                  replyMatch = rawContent.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)/);
+                }
+                if (replyMatch && replyMatch[1]) {
+                  const replyText = replyMatch[1]
+                    .replace(/\\"/g, '"')
+                    .replace(/\\n/g, '\n')
+                    .replace(/\\t/g, '\t')
+                    .replace(/\\r/g, '\r');
+
+                  if (replyText && replyText !== lastStreamedReply) {
+                    lastStreamedReply = replyText;
+
+                    if (!streamingMessageEl) {
                       removeTypingIndicator();
-                      addChangesSummaryCard(0, streamingSummary, true);
-                      cardShown = true;
-                    } else if (cardShown) {
-                      updateStreamingCard(streamingSummary);
+                      streamingMessageEl = document.createElement('div');
+                      streamingMessageEl.className = 'chat-message assistant streaming';
+                      streamingMessageEl.innerHTML = `<div class="message-content"></div>`;
+                      document.getElementById('chat-messages').appendChild(streamingMessageEl);
                     }
 
-                    // Check if summary is complete (closing quote followed by comma or text field)
-                    if (rawContent.match(/"summary"\s*:\s*"[^"]*"\s*,/)) {
-                      summaryComplete = true;
+                    streamingMessageEl.querySelector('.message-content').textContent = replyText;
+                    scrollChatToBottom();
+                  }
+                }
+
+                // If it's an edit response, show summary in a card
+                if (isEditResponse === true) {
+                  const summaryMatch = rawContent.match(/"summary"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+                  if (summaryMatch) {
+                    const summaryText = summaryMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n');
+                    if (summaryText !== lastStreamedSummary) {
+                      lastStreamedSummary = summaryText;
+
+                      if (!cardShown) {
+                        addChangesSummaryCard(0, summaryText, true);
+                        cardShown = true;
+                      } else {
+                        updateStreamingCard(summaryText);
+                      }
                     }
                   }
                 }
@@ -1583,6 +1620,12 @@ User request: ${userMessage}`;
             }
           }
         }
+      }
+
+      // Clean up streaming message class
+      if (streamingMessageEl) {
+        streamingMessageEl.classList.remove('streaming');
+        replyAlreadyStreamed = true;
       }
     }
 
@@ -1626,6 +1669,7 @@ User request: ${userMessage}`;
         isSelection,
         originalText: textToEdit,
         wasStreaming: !state.extendedThinking,
+        replyAlreadyStreamed,
       };
     }
 
@@ -1641,6 +1685,7 @@ User request: ${userMessage}`;
       isSelection,
       originalText: textToEdit,
       wasStreaming: !state.extendedThinking,
+      replyAlreadyStreamed,
     };
   } catch (error) {
     console.error('Claude API error:', error);
@@ -1707,7 +1752,8 @@ async function handleThreadSubmit() {
 
   if (result) {
     // If there's a reply (conversational text), show it first
-    if (result.reply) {
+    // Skip if already streamed into the chat
+    if (result.reply && !result.replyAlreadyStreamed) {
       addChatMessage('assistant', result.reply);
     }
 
