@@ -6,15 +6,21 @@
       <stop offset="50%" style="stop-color:#2d3748"/>
       <stop offset="100%" style="stop-color:#1a202c"/>
     </linearGradient>
-    <!-- Gradient for ink surface -->
+    <!-- Gradient for ink surface - DIFF GREEN -->
     <linearGradient id="inkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#3b82f6"/>
-      <stop offset="100%" style="stop-color:#1e3a8a"/>
+      <stop offset="0%" style="stop-color:#4ade80"/>
+      <stop offset="100%" style="stop-color:#16a34a"/>
     </linearGradient>
-    <!-- Gradient for quill -->
-    <linearGradient id="quillGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- Gradient for quill shaft - warm white -->
+    <linearGradient id="shaftGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#fefefe"/>
-      <stop offset="100%" style="stop-color:#e2e8f0"/>
+      <stop offset="100%" style="stop-color:#f5f5f4"/>
+    </linearGradient>
+    <!-- Gradient for feathers - Claude coral/orange -->
+    <linearGradient id="featherGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff9966"/>
+      <stop offset="40%" style="stop-color:#ff7755"/>
+      <stop offset="100%" style="stop-color:#e85d3b"/>
     </linearGradient>
     <!-- Gold accent for rim and nib -->
     <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -25,6 +31,12 @@
     <radialGradient id="shadowGrad" cx="50%" cy="50%" r="50%">
       <stop offset="70%" style="stop-color:#000000;stop-opacity:0.3"/>
       <stop offset="100%" style="stop-color:#000000;stop-opacity:0"/>
+    </radialGradient>
+    <!-- Sparkle/glow effect -->
+    <radialGradient id="sparkleGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1"/>
+      <stop offset="50%" style="stop-color:#ffffff;stop-opacity:0.6"/>
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0"/>
     </radialGradient>
   </defs>
 
@@ -42,16 +54,16 @@
   <ellipse cx="400" cy="520" rx="240" ry="80" fill="url(#goldGrad)"/>
   <ellipse cx="400" cy="530" rx="220" ry="70" fill="url(#inkwellGrad)"/>
 
-  <!-- Ink surface -->
+  <!-- Ink surface - DIFF GREEN -->
   <ellipse cx="400" cy="540" rx="200" ry="60" fill="url(#inkGrad)"/>
 
   <!-- Ink surface highlight -->
-  <ellipse cx="350" cy="530" rx="70" ry="20" fill="#60a5fa" opacity="0.4"/>
+  <ellipse cx="350" cy="530" rx="70" ry="20" fill="#86efac" opacity="0.5"/>
 
   <!-- Quill pen shaft -->
-  <line x1="360" y1="500" x2="750" y2="110" stroke="url(#quillGrad)" stroke-width="20" stroke-linecap="round"/>
+  <line x1="360" y1="500" x2="750" y2="110" stroke="url(#shaftGrad)" stroke-width="20" stroke-linecap="round"/>
 
-  <!-- Quill feather body -->
+  <!-- Quill feather body - Claude coral/orange -->
   <path d="M750 110
            Q850 60 900 90
            Q870 140 820 160
@@ -64,14 +76,40 @@
            Q680 270 645 310
            Q660 255 665 210
            L750 110 Z"
-        fill="url(#quillGrad)"/>
+        fill="url(#featherGrad)"/>
+
+  <!-- Feather highlights/barbs for texture -->
+  <path d="M750 110 L870 100" stroke="#ffb088" stroke-width="3" opacity="0.7"/>
+  <path d="M750 110 L850 140" stroke="#ffb088" stroke-width="2" opacity="0.6"/>
+  <path d="M750 110 L830 180" stroke="#ffb088" stroke-width="2" opacity="0.5"/>
+  <path d="M750 110 L790 220" stroke="#ffb088" stroke-width="2" opacity="0.5"/>
+  <path d="M750 110 L740 260" stroke="#ffb088" stroke-width="2" opacity="0.4"/>
+  <path d="M750 110 L690 250" stroke="#ffb088" stroke-width="2" opacity="0.4"/>
 
   <!-- Quill feather spine -->
-  <path d="M750 110 L680 230" stroke="#94a3b8" stroke-width="4" fill="none"/>
+  <path d="M750 110 L680 230" stroke="#cc6644" stroke-width="4" fill="none"/>
+
+  <!-- Sparkles on feather - sunburst pattern hint -->
+  <circle cx="870" cy="85" r="8" fill="url(#sparkleGrad)"/>
+  <circle cx="895" cy="120" r="6" fill="url(#sparkleGrad)"/>
+  <circle cx="880" cy="170" r="5" fill="url(#sparkleGrad)"/>
+  <circle cx="850" cy="220" r="4" fill="url(#sparkleGrad)"/>
+  <circle cx="800" cy="280" r="4" fill="url(#sparkleGrad)"/>
+  <circle cx="720" cy="300" r="5" fill="url(#sparkleGrad)"/>
+  <circle cx="660" cy="290" r="4" fill="url(#sparkleGrad)"/>
+
+  <!-- Additional small sparkles -->
+  <circle cx="830" cy="100" r="3" fill="#ffffff" opacity="0.8"/>
+  <circle cx="860" cy="150" r="2" fill="#ffffff" opacity="0.7"/>
+  <circle cx="820" cy="195" r="2" fill="#ffffff" opacity="0.6"/>
+  <circle cx="770" cy="250" r="2" fill="#ffffff" opacity="0.5"/>
 
   <!-- Quill nib -->
   <path d="M360 500 L330 570 L355 510 Z" fill="url(#goldGrad)"/>
 
-  <!-- Ink drip from nib -->
+  <!-- Ink drip from nib - DIFF GREEN -->
   <ellipse cx="332" cy="590" rx="14" ry="18" fill="url(#inkGrad)"/>
+
+  <!-- Small drip highlight -->
+  <ellipse cx="328" cy="583" rx="5" ry="6" fill="#86efac" opacity="0.5"/>
 </svg>
