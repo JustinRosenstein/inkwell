@@ -45,10 +45,7 @@ function createMenu() {
         {
           label: 'New',
           accelerator: 'CmdOrCtrl+N',
-          click: () => {
-            currentFilePath = null;
-            mainWindow.webContents.send('menu-new');
-          }
+          click: () => createNewFile()
         },
         {
           label: 'Open...',
@@ -140,6 +137,22 @@ function createMenu() {
 
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);
+}
+
+async function createNewFile() {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: 'Create New Document',
+    filters: [
+      { name: 'Markdown', extensions: ['md'] }
+    ]
+  });
+
+  if (!result.canceled && result.filePath) {
+    // Create empty file
+    fs.writeFileSync(result.filePath, '', 'utf-8');
+    currentFilePath = result.filePath;
+    mainWindow.webContents.send('file-opened', { filePath: result.filePath, content: '' });
+  }
 }
 
 async function openFile() {
