@@ -2535,14 +2535,6 @@ function setupEventListeners() {
 
     if (e.metaKey || e.ctrlKey) {
       switch (e.key) {
-        case 'b':
-          e.preventDefault();
-          executeToolbarAction('bold');
-          break;
-        case 'i':
-          e.preventDefault();
-          executeToolbarAction('italic');
-          break;
         case 'k':
           e.preventDefault();
           openLinkModal();
