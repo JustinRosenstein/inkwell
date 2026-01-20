@@ -409,6 +409,9 @@ function executeToolbarAction(action) {
     case 'strike':
       editor.chain().focus().toggleStrike().run();
       break;
+    case 'link':
+      openLinkModal();
+      break;
     case 'heading1':
       editor.chain().focus().toggleHeading({ level: 1 }).run();
       break;
