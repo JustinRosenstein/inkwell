@@ -45,7 +45,10 @@ function createMenu() {
         {
           label: 'New',
           accelerator: 'CmdOrCtrl+N',
-          click: () => mainWindow.webContents.send('menu-new')
+          click: () => {
+            currentFilePath = null;
+            mainWindow.webContents.send('menu-new');
+          }
         },
         {
           label: 'Open...',

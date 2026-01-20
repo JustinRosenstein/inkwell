@@ -828,22 +828,13 @@ function addChangesSummaryCard(changeCount, description = null, streaming = fals
 
   const countText = streaming ? '...' : `${changeCount} change${changeCount !== 1 ? 's' : ''} suggested`;
 
-  let html = `
+  const html = `
     <div class="changes-summary-header">
       <span class="changes-summary-icon">✎</span>
       <span class="changes-summary-count">${countText}</span>
     </div>
     <div class="changes-summary-description">${description ? escapeHtml(description) : ''}</div>
   `;
-
-  if (!streaming) {
-    html += `
-      <div class="changes-summary-actions">
-        <button class="changes-summary-btn accept" onclick="acceptAllChanges()">Accept all</button>
-        <button class="changes-summary-btn reject" onclick="rejectAllChanges()">Reject all</button>
-      </div>
-    `;
-  }
 
   card.innerHTML = html;
   messagesContainer.appendChild(card);
@@ -886,15 +877,6 @@ function finalizeStreamingCard(changeCount, description) {
   if (descEl) {
     descEl.textContent = description || '';
   }
-
-  // Add action buttons
-  const actionsHtml = `
-    <div class="changes-summary-actions">
-      <button class="changes-summary-btn accept" onclick="acceptAllChanges()">Accept all</button>
-      <button class="changes-summary-btn reject" onclick="rejectAllChanges()">Reject all</button>
-    </div>
-  `;
-  card.insertAdjacentHTML('beforeend', actionsHtml);
 
   // Store in chat messages for persistence
   state.chatMessages.push({
@@ -1392,6 +1374,39 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// Normalize quotes/apostrophes in newText to match the style used in originalText
+function normalizeQuotesToMatch(newText, originalText) {
+  // Count straight vs curly apostrophes in original
+  const straightApostrophes = (originalText.match(/'/g) || []).length;
+  const curlyApostrophes = (originalText.match(/[\u2019\u2018]/g) || []).length;
+
+  // Count straight vs curly double quotes in original
+  const straightDoubleQuotes = (originalText.match(/"/g) || []).length;
+  const curlyDoubleQuotes = (originalText.match(/[\u201C\u201D]/g) || []).length;
+
+  let result = newText;
+
+  // Normalize apostrophes: if original uses mostly straight, convert curly to straight
+  if (straightApostrophes > curlyApostrophes) {
+    result = result.replace(/[\u2019\u2018]/g, "'");
+  } else if (curlyApostrophes > straightApostrophes) {
+    // Original uses curly - convert straight apostrophes to curly
+    // This is trickier as ' can be opening or closing
+    // For simplicity, use right single quote for apostrophes (most common case)
+    result = result.replace(/'/g, "\u2019");
+  }
+
+  // Normalize double quotes: if original uses mostly straight, convert curly to straight
+  if (straightDoubleQuotes > curlyDoubleQuotes) {
+    result = result.replace(/[\u201C\u201D]/g, '"');
+  } else if (curlyDoubleQuotes > straightDoubleQuotes) {
+    // Original uses curly - this would need smarter handling for open vs close
+    // For now, just leave as-is since this is less common
+  }
+
+  return result;
+}
+
 async function sendToClaudeAPI(userMessage) {
   if (!state.apiKey) {
     addChatMessage('assistant', 'Please set your Claude API key in Settings (Cmd+,)');
@@ -1676,6 +1691,8 @@ User request: ${userMessage}`;
     if (content) {
       content = content.replace(/^(\s*---\s*\n)+/, '');
       content = content.replace(/(\n\s*---\s*)+$/, '');
+      // Normalize apostrophes/quotes to match the original text style
+      content = normalizeQuotesToMatch(content, textToEdit);
     }
 
     return {
@@ -2276,6 +2293,18 @@ function acceptChanges() {
   const editorElement = document.querySelector('#editor');
   const scrollPos = editorElement.scrollTop;
 
+  // If there are individual changes being tracked, accept only unresolved ones
+  const unresolvedChanges = state.diffChanges.filter(c => c.type === 'change' && !c.resolved);
+  if (unresolvedChanges.length > 0) {
+    // Accept each unresolved change individually (preserving rejected changes)
+    unresolvedChanges.forEach(change => {
+      acceptSingleChange(change.id);
+    });
+    // finalizeChanges will be called by checkAllChangesResolved when all are resolved
+    return;
+  }
+
+  // Fallback for diffs without individual change tracking
   state.editor.setEditable(true);
 
   if (state.isSelectionEdit) {
@@ -2313,6 +2342,18 @@ function rejectChanges() {
   const editorElement = document.querySelector('#editor');
   const scrollPos = editorElement.scrollTop;
 
+  // If there are individual changes being tracked, reject only unresolved ones
+  const unresolvedChanges = state.diffChanges.filter(c => c.type === 'change' && !c.resolved);
+  if (unresolvedChanges.length > 0) {
+    // Reject each unresolved change individually (preserving accepted changes)
+    unresolvedChanges.forEach(change => {
+      rejectSingleChange(change.id);
+    });
+    // finalizeChanges will be called by checkAllChangesResolved when all are resolved
+    return;
+  }
+
+  // Fallback for diffs without individual change tracking
   state.editor.setEditable(true);
 
   // Restore clean document content (don't update cleanDocumentMarkdown since we're restoring)
